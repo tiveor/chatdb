@@ -1,28 +1,30 @@
 import { Hono } from "hono";
-import { getSchemaText, invalidateSchemaCache, listSchemas, listTables } from "../services/schema.js";
+import type { ChatDB } from "@tiveor/chatdb";
 
-const schema = new Hono();
+export function createSchemaRoutes(chatdb: ChatDB) {
+  const schema = new Hono();
 
-schema.get("/list", async (c) => {
-  const schemas = await listSchemas();
-  return c.json({ schemas });
-});
+  schema.get("/list", async (c) => {
+    const schemas = await chatdb.listSchemas();
+    return c.json({ schemas });
+  });
 
-schema.get("/tables", async (c) => {
-  const name = c.req.query("name") || "public";
-  const tables = await listTables(name);
-  return c.json({ tables });
-});
+  schema.get("/tables", async (c) => {
+    const name = c.req.query("name") || "public";
+    const tables = await chatdb.listTables(name);
+    return c.json({ tables });
+  });
 
-schema.get("/", async (c) => {
-  const name = c.req.query("name") || "public";
-  const schemaText = await getSchemaText(name);
-  return c.json({ schema: schemaText });
-});
+  schema.get("/", async (c) => {
+    const name = c.req.query("name") || "public";
+    const schemaText = await chatdb.getSchema(name);
+    return c.json({ schema: schemaText });
+  });
 
-schema.post("/refresh", async (c) => {
-  invalidateSchemaCache();
-  return c.json({ refreshed: true });
-});
+  schema.post("/refresh", async (c) => {
+    chatdb.refreshSchema();
+    return c.json({ refreshed: true });
+  });
 
-export default schema;
+  return schema;
+}

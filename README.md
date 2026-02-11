@@ -1,16 +1,71 @@
 # ChatDB
 
-Talk to your PostgreSQL database in natural language. Ask questions, get SQL, tables, and charts back — like chatting with a data analyst.
+Talk to your database in natural language. Ask questions, get SQL, tables, and charts back — like chatting with a data analyst.
+
+Available as a **web app** (this repo) and as an **npm package** ([`@tiveor/chatdb`](https://www.npmjs.com/package/@tiveor/chatdb)) to embed in your own projects.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=black)
 ![Hono](https://img.shields.io/badge/Hono-E36002?logo=hono&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)
+[![npm](https://img.shields.io/npm/v/@tiveor/chatdb)](https://www.npmjs.com/package/@tiveor/chatdb)
 
 ![ChatDB Demo](demo.gif)
 
-## How It Works
+## Use as npm Package
+
+Add ChatDB to your existing project. Install from npm, set two env vars, and you're chatting with your database:
+
+```bash
+# In your project
+npm install @tiveor/chatdb pg    # or mysql2, or better-sqlite3
+```
+
+```env
+# .env
+DATABASE_URL=postgresql://user:pass@localhost:5432/mydb
+OPENAI_API_KEY=sk-...
+```
+
+```typescript
+// app.ts
+import { ChatDB } from '@tiveor/chatdb'
+
+const db = new ChatDB({
+  database: process.env.DATABASE_URL,
+  llm: { apiKey: process.env.OPENAI_API_KEY }
+})
+
+// One-off question
+const result = await db.query('top 10 customers by revenue')
+console.log(result.sql)         // SELECT name, SUM(amount) AS total ...
+console.log(result.explanation) // "Top 10 customers ranked by total revenue"
+console.log(result.rows)       // [{ name: "Acme", total: 50000 }, ...]
+console.log(result.chartType)  // "bar"
+
+// Conversational — keeps context between questions
+await db.ask('how many orders last month?')
+await db.ask('and this month?')        // understands "this month" from context
+await db.ask('show me the trend')      // references both previous answers
+
+await db.close()
+```
+
+Works with **PostgreSQL**, **MySQL**, and **SQLite**. Supports **OpenAI**, **Anthropic**, and any **OpenAI-compatible** API (Ollama, LM Studio, vLLM). Auto-detects everything from your connection string and API key.
+
+Also available as a CLI:
+
+```bash
+npx @tiveor/chatdb -d postgresql://localhost/mydb -k sk-...
+chatdb> how many users signed up this week?
+```
+
+Full package docs: [`@tiveor/chatdb` on npm](https://www.npmjs.com/package/@tiveor/chatdb)
+
+---
+
+## How It Works (Web App)
 
 ```
 You: "How many orders were placed last month?"
@@ -18,26 +73,20 @@ You: "How many orders were placed last month?"
         v
   [Hono API Server]
         |
-   Gets your DB schema (cached)
-        |
         v
-  [Local LLM via OpenAI API]
-   Schema + question → SQL + chart type
-        |
-        v
-  [SQL Guard] ← blocks anything that isn't SELECT
-        |
-        v
-  [PostgreSQL] → executes query
+  [@tiveor/chatdb SDK]
+   Schema (cached) + question → LLM → SQL + chart type
+   SQL Guard ← blocks anything that isn't SELECT
+   Database → executes query
         |
         v
   Table + Chart + Explanation
 ```
 
 1. You type a question in plain language
-2. The server sends your DB schema + question to a local LLM
+2. The server delegates to `@tiveor/chatdb` which handles schema introspection, LLM prompting, SQL validation, and query execution
 3. The LLM generates a `SELECT` query + picks a chart type
-4. A SQL guard validates the query is read-only (blocks INSERT, DELETE, DROP, etc.)
+4. The SQL guard validates the query is read-only (blocks INSERT, DELETE, DROP, etc.)
 5. The query runs against your database with a 10s timeout and 1000 row limit
 6. You see the explanation, an auto-generated chart, and a data table
 
@@ -58,9 +107,10 @@ You: "How many orders were placed last month?"
 | Layer | Tech |
 |-------|------|
 | Frontend | React 19, Vite 7, Tailwind CSS 4, Recharts |
-| Backend | Hono (Node adapter), TypeScript |
-| Database | PostgreSQL via `pg` (works with Supabase, Neon, local, etc.) |
-| AI | Any OpenAI-compatible API (`/v1/chat/completions`) |
+| Backend | Hono (Node adapter), powered by [`@tiveor/chatdb`](https://www.npmjs.com/package/@tiveor/chatdb) |
+| Database | PostgreSQL, MySQL, SQLite (via `pg`, `mysql2`, `better-sqlite3`) |
+| AI | OpenAI, Anthropic, or any OpenAI-compatible API (Ollama, LM Studio, vLLM) |
+| npm Package | [`@tiveor/chatdb`](https://www.npmjs.com/package/@tiveor/chatdb) — zero deps, dual ESM+CJS |
 | Monorepo | pnpm workspaces |
 
 ## Project Structure
@@ -72,17 +122,12 @@ chatdb/
 ├── .env                      # Your config (not committed)
 ├── .env.example
 │
-├── server/
+├── server/                        # Thin HTTP wrapper around @tiveor/chatdb
 │   └── src/
-│       ├── index.ts           # Hono server, CORS, routes
+│       ├── index.ts           # Hono server, CORS, ChatDB instance
 │       ├── routes/
-│       │   ├── chat.ts        # POST /api/chat — main flow
-│       │   └── schema.ts      # GET /api/schema/* — introspection
-│       ├── services/
-│       │   ├── ollama.ts      # LLM client, prompt engineering, token budgeting
-│       │   ├── database.ts    # pg pool, query execution, schema isolation
-│       │   ├── schema.ts      # DB introspection + cache
-│       │   └── sql-guard.ts   # Read-only validation, LIMIT enforcement
+│       │   ├── chat.ts        # POST /api/chat → chatdb.query()
+│       │   └── schema.ts      # GET /api/schema/* → chatdb.listSchemas/listTables/getSchema
 │       └── types.ts
 │
 ├── client/
@@ -101,6 +146,19 @@ chatdb/
 │       ├── services/
 │       │   └── api.ts            # API client
 │       └── types.ts
+│
+├── packages/
+│   └── chatdb-sdk/              # @tiveor/chatdb npm package
+│       ├── package.json
+│       ├── tsup.config.ts       # Dual ESM + CJS build
+│       └── src/
+│           ├── chatdb.ts        # Main orchestrator
+│           ├── llm/             # OpenAI, Anthropic, OpenAI-compatible providers
+│           ├── db/              # PostgreSQL, MySQL, SQLite adapters
+│           ├── prompt/          # Dialect-aware SQL prompt builder
+│           ├── guard/           # SQL validation + LIMIT enforcement
+│           ├── cli/             # Interactive REPL + single query mode
+│           └── __tests__/       # 256 tests, 98.56% coverage
 ```
 
 ## Quick Start
