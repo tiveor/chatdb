@@ -113,7 +113,7 @@ chatdb/
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/your-username/chatdb.git
+git clone https://github.com/tiveor/chatdb.git
 cd chatdb
 pnpm install
 ```
@@ -323,4 +323,4 @@ Contributions are welcome! Please open an issue first to discuss what you'd like
 
 ## License
 
-MIT
+MIT - Alvaro Orellana
