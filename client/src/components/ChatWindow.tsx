@@ -9,12 +9,12 @@ interface Props {
 }
 
 const SUGGESTIONS = [
-  { text: "Total de ventas por mes", icon: "📈" },
-  { text: "Top 10 productos más vendidos", icon: "🏆" },
-  { text: "Distribución de pedidos por estado", icon: "🥧" },
-  { text: "Ingreso total del último mes", icon: "💰" },
-  { text: "Ventas por categoría de producto", icon: "📊" },
-  { text: "Últimos 10 pedidos realizados", icon: "📋" },
+  { text: "Total sales by month", icon: "📈" },
+  { text: "Top 10 best-selling products", icon: "🏆" },
+  { text: "Order distribution by status", icon: "🥧" },
+  { text: "Total revenue last month", icon: "💰" },
+  { text: "Sales by product category", icon: "📊" },
+  { text: "Last 10 orders placed", icon: "📋" },
 ];
 
 export function ChatWindow({ messages, onNewConversation, onSend }: Props) {

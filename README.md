@@ -8,6 +8,8 @@ Talk to your PostgreSQL database in natural language. Ask questions, get SQL, ta
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)
 
+![ChatDB Demo](demo.gif)
+
 ## How It Works
 
 ```
