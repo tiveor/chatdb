@@ -39,3 +39,5 @@ Thumbs.db
 *.local
 
 idea
+# PDFs generated from a Markdown file of the same name (foo.md -> foo.pdf); external PDFs must be added with git add -f
+*.pdf
